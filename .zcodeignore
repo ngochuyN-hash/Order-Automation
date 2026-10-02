@@ -1,0 +1,120 @@
+# ─── Business Data (external, never commit) ───────────────────────────────
+I.ĐƠN HÀNG/
+Bảng giá/
+
+# ─── Build Outputs ────────────────────────────────────────────────────────
+Ứng dụng Lên Đơn Hàng/
+dist/
+
+# ─── Dependencies ─────────────────────────────────────────────────────────
+node_modules/
+
+# ─── Python ───────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+
+# ─── Temp / Test / Scratch Files ──────────────────────────────────────────
+_test_*.xlsx
+_test_*.py
+_test_*.json
+_sandbox_*.xlsx
+test_*.xlsx
+test_output.xlsx
+test_*.js
+_sandbox_*/
+~$*
+*.bak
+*.presync.bak
+tmp_*.txt
+_*.txt
+_*.png
+_qa_*.png
+_*.json
+!kv-name-map.json
+!default-db.json
+!package.json
+!package-lock.json
+
+# ─── Report Outputs ──────────────────────────────────────────────────────
+.qoder/better-loop/
+
+# ─── Secrets ──────────────────────────────────────────────────────────────
+.env
+
+# ─── Vendored / External Repos ───────────────────────────────────────────
+agentic-awesome-skills-main/
+
+# ─── Misc / Dumps ─────────────────────────────────────────────────────────
+znt_dump.txt
+_harness_final*.txt
+_diag_*.py
+_scan_*.py
+_check_*.py
+_check_*.js
+_check_*.mjs
+_verify_*.mjs
+_reconcile_*.py
+_generate_*.py
+_inspect_*.py
+_sum_*.py
+_render_*.py
+_consolidate_*.js
+_merge_*.js
+_remove_*.js
+analyze_*.js
+analyze_*.mjs
+check_*.mjs
+check_*.js
+find_*.mjs
+fix_*.mjs
+patch_*.py
+cross_*.py
+run_check_*.py
+repair_*.py
+.archive/
+*.zip
+.agents/
+.qoder/
+Tracking/
+.playwright-mcp/
+.zcode/
+Bao_cao_*.md
+ORIGINAL_REQUEST.md
+
+# Môi trường test cách ly (userData + token + log instance test)
+.test-env/
+
+# Folder xuất mã nguồn bàn giao + staging của scripts/package-source.js
+Mã nguồn bàn giao/
+_clean_source_staging/
+
+# ===== ↑ 以上同步自 .gitignore（「从 .gitignore 同步」只重写以上部分）=====
+.git/
+.hg/
+.svn/
+bower_components/
+jspm_packages/
+site-packages/
+venv/
+coverage/
+htmlcov/
+lcov-report/
+cmakefiles/
+cmake-build-*/
+bazel-*/
+pods/
+deriveddata/
+storybook-static/
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+cdk.out/
+*.egg-info/
+*.dist-info/
+eggs/
+pip-wheel-metadata/
+wheels/
+# ----- ↑ 以上为 ZCode 默认排除规则（自定义规则请写在本行下方，不会被同步/恢复改动）-----
+# 自定义规则写在下方（本行提示可删除）

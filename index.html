@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order Automation — Tự động hóa đơn hàng</title>
+  <link rel="icon" type="image/png" href="resources/icon.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!--
+  SVG SPRITE: khai báo symbol icon dùng chung MỘT lần duy nhất, tái sử dụng
+  qua <use href="#icon-*"> để tránh lặp markup inline. Chỉ gom 4 nhóm icon
+  lặp nhiều nhất: save / gear / box / folder. Icon dùng 1-2 lần giữ nguyên inline.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
+  <!-- Icon "lưu" (floppy disk): dùng cho các nút tạo/lưu thương hiệu, hồ sơ AI, bộ nhớ, thư mục đơn hàng -->
+  <symbol id="icon-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></symbol>
+  <!-- Icon "bánh răng": dùng cho tab Cài đặt và nút Quản lý người nhận đặt -->
+  <symbol id="icon-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <!-- Icon "hộp/kho": dùng cho tab Sản phẩm và tiêu đề card sản phẩm -->
+  <symbol id="icon-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></symbol>
+  <!-- Icon "thư mục": dùng cho tab Thương Hiệu, card thương hiệu và các nút chọn thư mục -->
+  <symbol id="icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+</svg>
+
+<div class="app-shell">
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!--  SIDEBAR                                                          -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <aside class="sidebar" aria-label="Thanh điều hướng">
+    <div class="sidebar-brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1a1205" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">Lên Đơn Hàng</span>
+        <span class="brand-sub">Order Automation</span>
+      </div>
+      <button class="sidebar-toggle" id="sidebarToggle" title="Thu gọn / mở rộng thanh menu" aria-label="Thu gọn hoặc mở rộng thanh menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav" id="mainNav" role="tablist" aria-label="Menu chính">
+      <button class="nav-tab active" data-tab="order" id="tabOrder" role="tab" aria-selected="true" aria-controls="panelOrder" title="Đơn Hàng">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+        <span class="nav-label">Đơn Hàng</span>
+      </button>
+      <button class="nav-tab" data-tab="catalog" id="tabCatalog" role="tab" aria-selected="false" aria-controls="panelCatalog" title="Danh Mục">
+        <!-- Icon tab Danh Mục: tái sử dụng symbol #icon-box từ sprite -->
+        <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-box"></use></svg></span>
+        <span class="nav-label">Danh Mục</span>
+      </button>
+      <button class="nav-tab" data-tab="settings" id="tabSettings" role="tab" aria-selected="false" aria-controls="panelSettings" title="Cài Đặt">
+        <!-- Icon tab Cài Đặt: tái sử dụng symbol #icon-gear từ sprite -->
+        <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"></use></svg></span>
+        <span class="nav-label">Cài Đặt</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="status-row status-row-click" id="sidebarAiRow" title="Bấm để cấu hình / đổi AI chính" role="button" tabindex="0">
+        <span class="status-dot ai" id="sidebarAiDot"></span>
+        <span>AI</span>
+        <span class="status-value" id="sidebarAiStatus">Offline</span>
+      </div>
+      <div class="status-row">
+        <span class="status-dot online"></span>
+        <span>Sản phẩm</span>
+        <span class="status-value" id="sidebarProductCount">—</span>
+      </div>
+      <div class="status-row" title="Phiên bản app đang cài">
+        <span>Phiên bản</span>
+        <span class="status-value" id="sidebarAppVersion">—</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!--  MAIN CONTENT                                                     -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <main class="main-content">
+
+    <!-- Banner cảnh báo lỗi lưu dữ liệu (persist error) — ẩn mặc định,
+         được src/ui/persist-watch.js điều khiển theo db.getLastPersistError() -->
+    <div id="persistErrorBanner" role="alert" style="display:none;" class="persist-error-banner">
+      <span id="persistErrorMessage">⚠️ Không thể lưu dữ liệu!</span>
+      <div class="persist-error-actions">
+        <button id="persistRetryBtn" class="btn btn-primary btn-sm" type="button">Thử lưu lại</button>
+        <button id="persistDismissBtn" class="btn btn-ghost btn-sm" type="button" aria-label="Đóng banner">✕</button>
+      </div>
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!--  AI ACTIVITY FEED — console hiển thị mọi thao tác của AI agent    -->
+    <!--  ngoài qua MCP server (event 'agent-activity' từ mcp-server.js).     -->
+    <!--  Ẩn mặc định, tự mở khi có hoạt động đầu tiên.                    -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <details class="ai-activity-details" id="aiActivityPanel" style="display:none;">
+      <summary class="ai-activity-summary">
+        <svg class="add-product-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        <span class="ai-activity-summary-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </span>
+        <span class="ai-activity-summary-text">Hoạt Động AI</span>
+        <span class="ai-activity-dot" id="aiActivityDot" title="Trạng thái: nhánh khi AI đang thao tác"></span>
+        <span class="ai-activity-badge" id="aiActivityBadge" style="display:none;">0</span>
+        <span class="ai-activity-summary-hint">AI agent ngoài thao tác app sẽ hiện tại đây</span>
+        <button class="btn btn-ghost btn-sm ai-activity-clear" id="aiActivityClear" type="button" title="Xóa nhật ký &amp; ẩn panel"><svg class="ai-activity-stop-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/></svg><span class="ai-activity-clear-text">Xóa</span></button>
+      </summary>
+      <div class="ai-activity-body">
+        <div class="ai-activity-console" id="aiActivityConsole" role="log" aria-live="polite" aria-label="Nhật ký hoạt động của AI agent"></div>
+      </div>
+    </details>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!--  TAB 1: ORDER — Split Pane                                      -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <div class="tab-panel active" id="panelOrder" role="tabpanel" aria-labelledby="tabOrder">
+      <div class="order-split">
+
+        <!-- LEFT: Input Pane -->
+        <div class="input-pane">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <span class="icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+                Nhập Đơn Hàng
+              </div>
+            </div>
+
+            <!-- Customer Info (one row, full width) -->
+            <div class="customer-info customer-info-wide">
+              <div class="input-group">
+                <label for="customerName">Tên KH / Cửa hàng</label>
+                <input type="text" id="customerName" class="input-field" placeholder="Nhập tên khách hàng..." />
+              </div>
+              <div class="input-group">
+                <label for="paymentMethod">Thanh toán</label>
+                <select id="paymentMethod" class="input-field">
+                  <option value="ck">Chuyển khoản (CK)</option>
+                  <option value="cod">COD</option>
+                  <option value="tt">Thanh toán trực tiếp (TT)</option>
+                  <option value="congno">Công nợ</option>
+                  <option value="other">Khác</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label for="sellerSearch">Người nhận đặt (Seller)</label>
+                <div class="seller-select-wrap">
+                  <div class="seller-combobox">
+                    <input type="hidden" id="sellerName" value="">
+                    <!-- Combobox pattern: input điều khiển listbox bên dưới qua aria-controls; aria-expanded do JS đồng bộ khi mở/đóng -->
+                    <input type="text" id="sellerSearch" class="input-field seller-search-input" placeholder="-- Chọn người nhận đặt --" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="sellerDropdown">
+                    <div class="seller-dropdown" id="sellerDropdown" role="listbox" aria-label="Danh sách người nhận đặt"></div>
+                  </div>
+                  <button class="btn btn-ghost btn-sm" id="btnManageSellers" title="Quản lý người nhận đặt" aria-label="Quản lý người nhận đặt">
+                    <!-- Icon bánh răng nút Quản lý: dùng #icon-gear -->
+                    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-gear"></use></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="input-group">
+                <label for="orderNote">Ghi chú</label>
+                <input type="text" id="orderNote" class="input-field" placeholder="Ghi chú thêm..." />
+              </div>
+            </div>
+
+            <!-- Customer Special-Price Note Warning -->
+            <div id="customerNoteWarning" class="customer-note-warning hidden">
+              <div class="cnw-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+              <div class="cnw-body">
+                <div class="cnw-title" id="cnwTitle">Khách có đơn giá riêng</div>
+                <div class="cnw-note" id="cnwNote"></div>
+              </div>
+              <button class="cnw-close" id="btnDismissCnw" title="Đóng" aria-label="Đóng cảnh báo">✕</button>
+            </div>
+
+            <!-- Order Text + Actions side by side -->
+            <div class="parse-row">
+              <div class="order-input-area">
+                <textarea
+                  id="orderText"
+                  class="order-textarea"
+                  placeholder="Dán tin nhắn của sales vào đây... (Ctrl+Enter để phân tích)"
+                  aria-label="Nội dung tin nhắn đơn hàng"
+                ></textarea>
+              </div>
+              <div class="parse-actions">
+                <button class="btn btn-primary btn-lg btn-block" id="btnParse">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  Phân Tích Đơn Hàng
+                </button>
+                <div class="button-row">
+                  <button class="btn btn-ghost btn-sm" id="btnClear">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    Xóa
+                  </button>
+                  <button class="btn btn-ghost btn-sm" id="btnSample">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    Mẫu thử
+                  </button>
+                  <!-- Đơn chờ duyệt: mở danh sách đơn đã lưu chờ sale check -->
+                  <button class="btn btn-ghost btn-sm pending-list-btn" id="btnPendingList" title="Danh sách đơn chờ duyệt">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Chờ duyệt
+                    <span class="pending-count-badge hidden" id="pendingCount">0</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hàng đợi phân tích song song: trạng thái các đơn đang/chờ AI parse -->
+            <div id="parseQueueStrip" class="parse-queue-strip hidden" aria-live="polite"></div>
+
+            <!-- Parsed Preview -->
+            <div class="parsed-preview" id="parsedPreview"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Results Pane -->
+        <div class="results-pane">
+          <!-- Results Header -->
+          <div class="results-pane-header">
+            <div class="results-pane-title">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              Chi Tiết Đơn Hàng
+            </div>
+          </div>
+
+          <!-- AI Detection Card (compact, below header) -->
+          <div class="card ai-detection-card hidden" id="aiDetectionCard">
+            <div class="ai-detection-content">
+              <div class="ai-result-row">
+                <div class="ai-campaign-badge" id="aiCampaignBadge"></div>
+                <div class="ai-confidence">
+                  <!-- Progressbar AI confidence: role đặt trên div mà width thay đổi (#aiConfidenceFill), valuenow do ui-renderer.js cập nhật -->
+                  <div class="confidence-bar"><div class="confidence-fill" id="aiConfidenceFill" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Độ tin cậy của AI"></div></div>
+                  <span class="confidence-text" id="aiConfidenceText">0%</span>
+                </div>
+                <div class="ai-override">
+                  <label for="aiOverrideCampaign">Ghi đè:</label>
+                  <select id="aiOverrideCampaign" class="input-field">
+                    <option value="">— Tự động —</option>
+                  </select>
+                </div>
+              </div>
+              <div class="ai-details" id="aiDetails"></div>
+            </div>
+          </div>
+
+          <!-- Scrollable Results -->
+          <div class="results-scroll">
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState">
+              <div class="empty-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-7z"/><path d="M5.45 5.11L2 12v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-7l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+              </div>
+              <h3>Chưa có đơn hàng</h3>
+              <p>Dán tin nhắn của sales vào ô bên trên và nhấn "Phân Tích Đơn Hàng" để bắt đầu.</p>
+            </div>
+
+            <!-- Order Results -->
+            <div class="order-results hidden" id="orderResults">
+              <table class="order-table">
+                <thead>
+                  <tr>
+                    <th class="order-th-actions"></th>
+                    <th>Sản phẩm</th>
+                    <th class="text-center order-th-qty">SL</th>
+                    <th class="text-center order-th-kvcode">Mã KV</th>
+                    <th class="text-right">Đơn giá (Chai / Thùng)</th>
+                    <th class="text-right order-th-total">Thành tiền</th>
+                  </tr>
+                </thead>
+                <tbody id="orderTableBody">
+                </tbody>
+              </table>
+
+              <!-- Add Product: luôn hiện, chỉ tìm trong danh mục để thêm vào đơn hiện tại -->
+              <section class="add-product-panel" aria-labelledby="addProductHeading">
+                <div class="add-product-header">
+                  <span class="add-product-header-icon">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  </span>
+                  <h3 class="add-product-heading" id="addProductHeading">Thêm Sản Phẩm Vào Đơn Hàng</h3>
+                  <span class="add-product-header-hint">Tìm trong danh mục để thêm vào đơn</span>
+                </div>
+                <div class="add-product-body">
+                  <div class="search-dropdown-container">
+                    <label class="visually-hidden" for="manualProductSearch">Tìm sản phẩm thêm vào đơn</label>
+                    <span class="search-icon" aria-hidden="true">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    </span>
+                    <input
+                      type="text"
+                      class="product-search-input"
+                      id="manualProductSearch"
+                      placeholder="Nhập tên sản phẩm để tìm kiếm và click thêm trực tiếp..."
+                      autocomplete="off"
+                    />
+                    <div class="search-dropdown" id="manualSearchDropdown"></div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- MKT Gifts -->
+              <div class="mkt-gifts-section hidden" id="mktGiftsSection">
+              </div>
+
+              <!-- Custom Extra Promos -->
+              <div class="custom-promo-section">
+                <div class="card-title mb-sm">
+                  <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span>
+                  Khuyến Mãi Ngoài (Tùy chỉnh)
+                </div>
+                <div class="custom-promo-list" id="customPromoList"></div>
+                <div class="promo-add-row">
+                  <input type="text" class="input-field" id="customPromoInput" placeholder="VD: Trừ phí vận chuyển, tặng thêm áo..." aria-label="Tên khuyến mãi tùy chỉnh" />
+                  <input type="text" class="input-field input-w-currency" id="customPromoValue" placeholder="Số tiền trừ (₫)" inputmode="numeric" aria-label="Số tiền khuyến mãi" />
+                  <button class="btn btn-success btn-sm" id="btnAddPromo">+ Thêm</button>
+                </div>
+              </div>
+
+              <!-- Payment Note -->
+              <div class="payment-note hidden" id="paymentNote">
+                <span class="icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span>
+                <span id="paymentNoteText"></span>
+              </div>
+
+              <!-- Sticky Summary Bar -->
+              <div class="order-summary" id="orderSummary">
+                <div class="summary-card">
+                  <div class="summary-label">Tổng sản phẩm</div>
+                  <div class="summary-value" id="summaryProducts">0</div>
+                </div>
+                <div class="summary-card">
+                  <div class="summary-label">Tổng số thùng</div>
+                  <div class="summary-value" id="summaryBoxes">0</div>
+                </div>
+                <div class="summary-card total-card">
+                  <div class="summary-label">Tổng tiền đơn hàng</div>
+                  <div class="summary-value highlight" id="summaryTotal">0 ₫</div>
+                </div>
+                <div class="summary-actions">
+                  <button class="btn btn-ghost btn-sm copy-summary-btn hidden" id="btnCopy">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Copy
+                  </button>
+                  <button class="btn btn-warning btn-sm hidden" id="btnSavePending" title="Lưu đơn vào danh sách chờ sale duyệt">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Lưu chờ duyệt
+                  </button>
+                  <button class="btn btn-primary btn-sm hidden" id="btnKiotVietOrder">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    Lên đơn KiotViet
+                  </button>
+                  <button class="btn btn-success btn-sm hidden" id="btnExportExcel">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Xuất Excel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!--  TAB 2: PRODUCT CATALOG                                         -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="panelCatalog" role="tabpanel" aria-labelledby="tabCatalog">
+      <div class="catalog-panel-wrap">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+<!-- Icon tiêu đề card Danh Mục: dùng #icon-box -->
+              <span class="icon"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-box"></use></svg></span>
+              Danh Mục Sản Phẩm &amp; Bảng Giá
+            </div>
+            <button type="button" id="btnCatalogAddProduct" class="btn btn-success btn-sm catalog-add-product-btn" title="Thêm sản phẩm mới — chọn thương hiệu ngay trong form">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Thêm sản phẩm
+            </button>
+          </div>
+          <!-- Chip bar lọc thương hiệu (điền động trong renderCatalog: dot màu + số SP + số ⚠ cần hoàn thiện) -->
+          <div id="catalogBrandChips" class="catalog-brand-chips" role="group" aria-label="Lọc theo thương hiệu"></div>
+          <div id="catalogSearchBar" class="mb-md">
+            <div class="catalog-toolbar">
+              <div class="relative-wrap flex-1">
+                <input type="text" id="catalogSearchInput" class="input-field catalog-search-input" placeholder="Tìm sản phẩm theo tên, spec hoặc mã KV..." aria-label="Tìm kiếm sản phẩm trong danh mục" />
+                <button type="button" id="catalogSearchClear" class="search-clear-btn hidden" title="Xóa tìm kiếm" aria-label="Xóa tìm kiếm">✕</button>
+              </div>
+              <select id="catalogCategoryFilter" class="input-field catalog-category-select" aria-label="Lọc theo nhóm hàng">
+                <option value="all">Tất cả nhóm hàng</option>
+              </select>
+              <button type="button" id="btnCatalogManageCampaigns" class="btn btn-ghost btn-sm">Quản lý thương hiệu</button>
+              <div class="catalog-view-toggle" id="catalogViewToggle" role="group" aria-label="Kiểu xem danh mục">
+                <button type="button" class="catalog-view-btn" data-view="flat" id="catalogViewFlat" title="Một danh sách liền mạch mọi thương hiệu">Danh sách</button>
+                <button type="button" class="catalog-view-btn" data-view="grouped" id="catalogViewGrouped" title="Gom nhóm theo thương hiệu">Theo thương hiệu</button>
+              </div>
+            </div>
+          </div>
+          <div id="catalogContent"></div>
+          <datalist id="categorySuggestions"></datalist>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!--  TAB 3: SETTINGS — Vertical Nav + Content                       -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="panelSettings" role="tabpanel" aria-labelledby="tabSettings">
+      <div class="settings-layout">
+
+        <!-- Settings Vertical Nav -->
+        <nav class="settings-nav" id="settingsNav" role="tablist" aria-label="Cài đặt phân hệ">
+          <div class="settings-subtabs">
+            <button class="settings-subtab-btn active" data-subtab="campaigns" role="tab" aria-selected="true" aria-controls="subtab-campaigns"><!-- Icon subtab Thương Hiệu: dùng #icon-folder --><span class="subtab-icon"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-folder"></use></svg></span> <span class="subtab-label">Thương Hiệu</span></button>
+            <button class="settings-subtab-btn" data-subtab="order" role="tab" aria-selected="false" aria-controls="subtab-order"><span class="subtab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span> <span class="subtab-label">Đơn Hàng</span></button>
+            <button class="settings-subtab-btn" data-subtab="ai" role="tab" aria-selected="false" aria-controls="subtab-ai"><span class="subtab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg></span> <span class="subtab-label">AI</span></button>
+            <button class="settings-subtab-btn" data-subtab="data" role="tab" aria-selected="false" aria-controls="subtab-data"><span class="subtab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg></span> <span class="subtab-label">Dữ Liệu</span></button>
+            <button class="settings-subtab-btn" data-subtab="system" role="tab" aria-selected="false" aria-controls="subtab-system"><span class="subtab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span> <span class="subtab-label">Hệ thống</span></button>
+          </div>
+          <button class="btn-collapse-settings-nav" id="btnCollapseSettingsNav" title="Thu gọn / Mở rộng" aria-label="Thu gọn hoặc mở rộng danh mục cài đặt">◀</button>
+        </nav>
+
+        <!-- Settings Content -->
+        <div class="settings-content">
+
+          <!-- Sub-tab: Campaigns (thương hiệu: cấu hình + MKT + KM text; SP quản lý ở tab Danh Mục) -->
+          <div class="settings-subtab-content active" id="subtab-campaigns">
+            <div class="settings-grid">
+              <div class="card" id="settingsSidebarCard">
+                <div class="card-header"><div class="card-title">Thương hiệu</div><button id="btnCollapseSidebar" class="btn-collapse-sidebar" title="Thu gọn">◀</button></div>
+                <div class="campaign-list" id="settingsCampaignList"></div>
+              </div>
+              <div class="card">
+                <div class="card-header"><div class="card-title">Cấu hình — <span id="settingsEditorTitle">Chọn thương hiệu</span></div></div>
+                <div class="product-editor" id="productEditor"></div>
+              </div>
+            </div>
+            <div class="card card-w-640 mt-md" id="addCampaignCard" style="display:none">
+              <div class="card-header">
+                <div class="card-title">
+                  <!-- Icon form tạo thương hiệu: dùng #icon-folder -->
+                  <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-folder"></use></svg></span>
+                  Thêm Thương Hiệu Mới
+                </div>
+                <button class="btn btn-ghost btn-sm" id="btnCloseCampaignForm">✕ Đóng</button>
+              </div>
+              <div class="input-group mb-sm">
+                <label for="newCampaignKey">Brand Key (Mã viết tắt, chữ thường không dấu, VD: torvex, veltron)</label>
+                <input type="text" id="newCampaignKey" class="input-field" placeholder="VD: tvx" />
+              </div>
+              <div class="input-group mb-sm">
+                <label for="newCampaignName">Tên thương hiệu</label>
+                <input type="text" id="newCampaignName" class="input-field" placeholder="VD: TVX - Dầu Nhớt Xe Máy" />
+              </div>
+              <div class="customer-info">
+                <div class="input-group">
+                  <label for="newCampaignIcon">Icon hiển thị</label>
+                  <input type="text" id="newCampaignIcon" class="input-field" placeholder="VD: ⚡" />
+                </div>
+                <div class="input-group">
+                  <label for="newCampaignColor">Màu sắc</label>
+                  <input type="color" id="newCampaignColor" class="input-field form-input-color" value="#f5a623" />
+                </div>
+              </div>
+              <div class="input-group mb-sm">
+                <label for="newCampaignBrand">Nhãn hàng liên kết (Brand Excel)</label>
+                <!-- Options được điền động từ BRAND_SHEETS (src/settings/ui.js) khi khởi tạo UI -->
+                <select id="newCampaignBrand" class="input-field"></select>
+              </div>
+              <div class="button-row mt-md">
+                <button class="btn btn-success btn-lg btn-block" id="btnSaveCampaign">
+                  <!-- Icon nút Tạo Thương Hiệu: dùng #icon-save -->
+                  <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-save"></use></svg>
+                  Tạo Thương Hiệu
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-tab: Order Settings -->
+          <div class="settings-subtab-content" id="subtab-order">
+            <!-- Customer Special-Price Notes -->
+            <div class="card card-w-720">
+              <div class="card-header">
+                <div class="card-title">
+                  <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+                  Khách Có Đơn Giá Riêng
+                </div>
+              </div>
+              <p class="text-muted mb-md">
+                Khi nhận diện tên khách trong danh sách này, hệ thống sẽ cảnh báo kèm ghi chú của bạn. Đơn hàng vẫn xuất bình thường.
+              </p>
+              <div class="cn-form">
+                <div class="input-group">
+                  <label for="cnNameInput">Tên khách / Cửa hàng</label>
+                  <input type="text" id="cnNameInput" class="input-field" placeholder="VD: Cửa hàng ABC" />
+                </div>
+                <div class="input-group">
+                  <label for="cnNoteInput">Ghi chú (đơn giá riêng, lưu ý...)</label>
+                  <textarea id="cnNoteInput" class="input-field" rows="2" placeholder="VD: Giá riêng thỏa thuận, CK 5%..."></textarea>
+                </div>
+                <div class="button-row">
+                  <button class="btn btn-primary btn-sm" id="btnAddCustomerNote">+ Thêm / Cập nhật</button>
+                  <button class="btn btn-ghost btn-sm hidden" id="btnClearCnForm">Hủy sửa</button>
+                </div>
+              </div>
+              <div id="customerNoteList" class="customer-note-list"></div>
+            </div>
+
+            <div class="card card-w-720 mt-md">
+              <div class="card-header">
+                <div class="card-title">
+                  <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+                  Cấu hình Prefix Đơn Hàng
+                </div>
+              </div>
+              <p class="text-muted mb-md">
+                Cấu hình prefix cho từng loại hàng.
+              </p>
+              <div class="input-group mb-md">
+                <label for="titleFormatInput">Format tiêu đề</label>
+                <div class="flex-row-gap-sm">
+                  <input type="text" id="titleFormatInput" class="input-field" placeholder="{PREFIX}{YY}{MM}-{sequence}-{Người nhận đặt}-{Chiết khấu}" />
+                  <button class="btn btn-primary btn-sm nowrap" id="btnSaveTitleFormat">Lưu</button>
+                </div>
+                <p class="text-hint-sm">Biến hỗ trợ: <code class="inline-code">{PREFIX}</code>, <code class="inline-code">{YY}</code>, <code class="inline-code">{MM}</code>, <code class="inline-code">{sequence}</code>, <code class="inline-code">{Người nhận đặt}</code>, <code class="inline-code">{Chiết khấu}</code></p>
+              </div>
+              <div id="prefixConfigList" class="prefix-config-list"></div>
+              <div class="button-row mt-md">
+                <button class="btn btn-primary btn-sm" id="btnAddPrefix">+ Thêm Prefix</button>
+                <button class="btn btn-ghost btn-sm" id="btnResetPrefixes">🔄 Khôi phục mặc định</button>
+              </div>
+            </div>
+
+            <div class="card card-w-720 mt-md">
+              <div class="card-header">
+                <div class="card-title">
+                  <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg></span>
+                  Đặt lại số thứ tự đơn hàng
+                </div>
+              </div>
+              <p class="text-muted mb-md">
+                Đặt lại bộ đếm số thứ tự đơn hàng về 0 cho từng loại hàng.
+              </p>
+              <div id="sequenceResetList" class="sequence-reset-list"></div>
+            </div>
+          </div>
+
+          <!-- Sub-tab: AI -->
+          <div class="settings-subtab-content" id="subtab-ai">
+            <div class="card ai-profiles-card">
+              <div class="card-header">
+                <div class="card-title">
+                  <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg></span>
+                  Quản Lý AI Profiles
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <button class="btn btn-ghost btn-sm" id="btnTestAllAiProfiles" title="Test lần lượt tất cả profile đang bật, hiện ✅/❌ trên từng dòng">🔌 Test tất cả</button>
+                  <button class="btn btn-primary btn-sm" id="btnAddAiProfile">+ Thêm Profile</button>
+                </div>
+              </div>
+
+              <!-- Strategy selector -->
+              <div class="ai-strategy-row">
+                <span class="ai-strategy-label">Chiến lược dùng key:</span>
+                <div class="ai-strategy-toggle">
+                  <button class="ai-strategy-btn active" data-strategy="failover" title="Dùng key chính trước, lỗi thì tự chuyển sang key tiếp theo">Failover</button>
+                  <button class="ai-strategy-btn" data-strategy="roundrobin" title="Xoay vòng các key luân phiên để chia đều chi phí / tránh rate limit">Round-Robin</button>
+                </div>
+                <span class="ai-strategy-hint" id="aiStrategyHint">Ưu tiên profile chính, tự động chuyển sang profile khác khi gặp lỗi (429, timeout...)</span>
+              </div>
+
+              <!-- Parse concurrency: số đơn AI phân tích cùng lúc trong hàng đợi -->
+              <div class="ai-strategy-row">
+                <span class="ai-strategy-label">Phân tích song song:</span>
+                <select id="parseConcurrencySelect" class="input-field ai-concurrency-select" aria-label="Số đơn phân tích AI cùng lúc">
+                  <option value="1">1 đơn</option>
+                  <option value="2">2 đơn</option>
+                  <option value="3">3 đơn</option>
+                  <option value="4">4 đơn</option>
+                  <option value="5">5 đơn</option>
+                </select>
+                <span class="ai-strategy-hint" id="parseConcurrencyHint">Số đơn được AI phân tích cùng lúc khi bạn dán liên tiếp nhiều đơn — đơn xong tự vào Đơn chờ duyệt. Nhiều key + Round-Robin → có thể để cao; 1 key duy nhất → nên để 1-2 để tránh rate limit.</span>
+              </div>
+
+              <!-- Profile list -->
+              <div id="aiProfileList" class="ai-profile-list">
+                <div class="ai-empty-state" id="aiEmptyState">
+                  <div class="ai-empty-icon">🔑</div>
+                  <p>Chưa có AI profile nào.</p>
+                  <p class="ai-empty-sub">Bấm <strong>"+ Thêm Profile"</strong> để thêm API key (Gemini, OpenAI, Claude, DeepSeek, Groq...) hoặc kết nối local (LM Studio, Ollama).</p>
+                </div>
+              </div>
+
+              <!-- Add/Edit profile form (hidden) -->
+              <div id="aiProfileForm" class="ai-profile-form hidden">
+                <div class="ai-form-header">
+                  <span id="aiFormTitle">+ Thêm AI Profile mới</span>
+                  <button class="btn btn-ghost btn-sm" id="btnCloseAiForm">✕</button>
+                </div>
+
+                <!-- Provider quick-pick cards (generated dynamically from AI_PROVIDERS registry in app.js) -->
+                <div class="ai-provider-grid" id="aiProviderGrid"></div>
+
+                <div class="ai-form-fields hidden" id="aiFormFields">
+                  <div class="ai-form-row">
+                    <div class="input-group">
+                      <label for="aiProfileName">Tên gợi nhớ</label>
+                      <input type="text" id="aiProfileName" class="input-field" placeholder="VD: Gemini Key 1, LM Studio Local..." />
+                    </div>
+                  </div>
+                  <div class="ai-form-row" id="aiFormKeyRow">
+                    <div class="input-group">
+                      <label for="aiProfileKey">API Key</label>
+                      <div class="apikey-wrap">
+                        <input type="password" id="aiProfileKey" class="input-field" placeholder="Dán API Key vào đây..." autocomplete="off" />
+                        <button class="btn btn-ghost btn-sm" id="btnToggleProfileKey" aria-label="Hiện/ẩn API Key">👁️</button>
+                      </div>
+                      <div class="field-hint hidden" id="aiKeyUrlHint">
+                        <a id="aiKeyUrlLink" href="#" target="_blank" rel="noopener noreferrer">🔑 Lấy API key miễn phí tại đây →</a>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="ai-form-row ai-form-2col">
+                    <div class="input-group">
+                      <label for="aiProfileModel">Model</label>
+                      <input type="text" id="aiProfileModel" class="input-field" list="aiModelDatalist" autocomplete="off" placeholder="Chọn model gợi ý hoặc gõ tay..." />
+                      <datalist id="aiModelDatalist"></datalist>
+                    </div>
+                    <div class="input-group hidden" id="aiFormEndpointGroup">
+                      <label for="aiProfileEndpoint">Endpoint URL</label>
+                      <input type="text" id="aiProfileEndpoint" class="input-field" placeholder="VD: https://api.deepseek.com  hoặc  http://127.0.0.1:1234/v1/chat/completions" />
+                      <div class="field-hint">Chuẩn OpenAI-compatible — chỉ cần nhập base URL (VD: https://api.deepseek.com), app tự thêm /v1/chat/completions.</div>
+                    </div>
+                  </div>
+
+                  <!-- LM Studio helper hint -->
+                  <div class="ai-lmstudio-hint hidden" id="aiLmStudioHint">
+                    <div class="ai-hint-title">💡 Cách kết nối LM Studio:</div>
+                    <ol>
+                      <li>Mở <strong>LM Studio</strong> → Load model (VD: Gemma, Llama, Qwen...)</li>
+                      <li>Tab <strong>Developer → Local Server</strong> → Bấm <strong>Start Server</strong> (port 1234)</li>
+                      <li>Endpoint mặc định: <code>http://127.0.0.1:1234/v1/chat/completions</code></li>
+                      <li>Không cần API Key — chạy hoàn toàn offline, miễn phí 100%!</li>
+                    </ol>
+                  </div>
+
+                  <div class="ai-form-actions">
+                    <button class="btn btn-ghost btn-sm" id="btnTestAiProfile">Test Kết Nối</button>
+                    <span id="aiProfileTestResult" class="ai-test-result"></span>
+                    <span class="flex-1"></span>
+                    <button class="btn btn-ghost btn-sm" id="btnCancelAiForm">Hủy</button>
+                    <button class="btn btn-primary btn-sm" id="btnSaveAiProfile">
+                      <!-- Icon nút Lưu Profile: dùng #icon-save -->
+                      <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-save"></use></svg>
+                      Lưu Profile
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div id="aiStatusBadge" class="ai-status-badge">🔒 Chưa có AI nào được cấu hình</div>
+            </div>
+
+            <!-- AI Rules Memory -->
+            <div class="card card-w-640 mt-md">
+              <div class="card-header">
+                <div class="card-title">
+                  <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04z"/></svg></span>
+                  Bộ Nhớ Quy Tắc AI
+                </div>
+              </div>
+              <div class="input-group mb-sm">
+                <label for="aiMemoryInput">Bộ nhớ quy tắc (Nhớ tên viết tắt, cách tính...)</label>
+                <textarea id="aiMemoryInput" class="input-field ai-memory-textarea" placeholder="Nhập quy tắc bộ nhớ tại đây..."></textarea>
+              </div>
+              <button class="btn btn-primary btn-sm btn-block" id="btnSaveMemory">
+                <!-- Icon nút Lưu Bộ Nhớ: dùng #icon-save -->
+                <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-save"></use></svg>
+                Lưu Bộ Nhớ
+              </button>
+            </div>
+          </div>
+
+          <!-- Sub-tab: Data -->
+          <div class="settings-subtab-content" id="subtab-data">
+            <div class="card card-w-640">
+              <div class="card-header">
+                <div class="card-title">
+                  <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg></span>
+                  Nhập / Xuất Dữ Liệu
+                </div>
+              </div>
+              <div class="data-actions">
+                <button class="btn btn-ghost btn-sm" id="btnExport">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Xuất JSON
+                </button>
+                <button class="btn btn-ghost btn-sm" id="btnImportTrigger">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Nhập JSON
+                </button>
+                <button class="btn btn-danger btn-sm" id="btnReset">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+                  Reset mặc định
+                </button>
+              </div>
+              <input type="file" id="importFileInput" class="hidden-input" accept=".json" />
+            </div>
+
+            <!-- Aliases Manager -->
+            <div class="card card-w-640 mt-md">
+              <div class="card-header">
+                <div class="card-title">
+                  <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span>
+                  Quản Lý Tên Gọi Tắt (Aliases)
+                </div>
+              </div>
+              <div class="input-group mb-sm">
+                <label for="aliasSearchInput">Tìm sản phẩm để quản lý alias</label>
+                <input type="text" id="aliasSearchInput" class="input-field" placeholder="Nhập tên sản phẩm..." />
+              </div>
+              <div id="aliasEditorContent">
+                <div class="empty-state empty-state-compact">
+                  <p class="text-subtle">Tìm sản phẩm ở trên để xem và chỉnh sửa aliases.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-tab: System -->
+          <div class="settings-subtab-content" id="subtab-system">
+            <div class="card card-w-720">
+              <div class="card-header">
+                <div class="card-title">
+                  <!-- Icon card Thư mục Đơn Hàng: dùng #icon-folder -->
+                  <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-folder"></use></svg></span>
+                  Thư mục Đơn Hàng
+                </div>
+              </div>
+              <p class="text-muted mb-md">
+                Đường dẫn đến thư mục <strong>I.ĐƠN HÀNG</strong> chứa file Excel các hãng. Mặc định dùng thư mục cùng cấp với ứng dụng.
+              </p>
+              <div class="input-group">
+                <label for="orderDirInput">Đường dẫn thư mục</label>
+                <div class="dir-picker-row">
+                  <input type="text" id="orderDirInput" class="input-field" placeholder="VD: C:\Antigravity\Order Automation\I.ĐƠN HÀNG" />
+                  <button class="btn btn-ghost btn-sm" id="btnPickOrderDir">
+                    <!-- Icon thư mục nút Chọn...: dùng #icon-folder -->
+                    <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-folder"></use></svg>
+                    Chọn...
+                  </button>
+                  <button class="btn btn-primary btn-sm" id="btnSaveOrderDir">
+                    <!-- Icon nút Lưu đường dẫn: dùng #icon-save -->
+                    <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-save"></use></svg>
+                    Lưu
+                  </button>
+                </div>
+              </div>
+              <div id="orderDirStatus" class="order-dir-status-text"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  MODAL OVERLAY                                                    -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- Modal chung: role=dialog + aria-modal giúp screen reader khoá nền, aria-labelledby trỏ tới #modalTitle -->
+<div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle" style="display:none;">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="card-header mb-md">
+      <div class="card-title" id="modalTitle">Tiêu đề</div>
+      <button class="btn btn-ghost btn-sm" id="btnCloseModal">✕ Đóng</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<!-- KiotViet Agent Modal: role=dialog + aria-labelledby trỏ tới badge/nhãn tiêu đề đầu panel (#modalKiotVietTitle) -->
+<div class="modal-overlay" id="modalKiotViet" role="dialog" aria-modal="true" aria-labelledby="modalKiotVietTitle" style="display:none;">
+  <div class="modal-content kv-modal-content" onclick="event.stopPropagation()">
+    <div class="card-header mb-md flex-shrink-0">
+      <div class="flex-row-gap-sm">
+        <!-- Tiêu đề modal KiotViet: nhận id để aria-labelledby của #modalKiotViet trỏ tới -->
+        <div class="card-title mb-0" id="modalKiotVietTitle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Tự động Lên đơn KiotViet
+        </div>
+        <span class="kv-status-badge disconnected" id="kvConnectionBadge">Chưa kết nối</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="btnCloseKvModal">✕ Đóng</button>
+    </div>
+
+    <div class="kv-modal-body flex-1">
+      <!-- Connection & Provider Header -->
+      <div class="kv-control-panel">
+        <div class="kv-control-row">
+          <div class="kv-control-group">
+            <button class="btn btn-outline-primary btn-sm" id="btnKvConnect">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Kết nối Browser
+            </button>
+            <button class="btn btn-ghost btn-sm hidden" id="btnKvDisconnect">Disconnect</button>
+          </div>
+          <div class="kv-control-group flex-1 flex-row-end">
+            <label class="kv-label kv-checkbox-label" title="BẬT: Bổ sung vào đúng giỏ/tab bạn đã chọn sẵn trên KiotViet — script quét từng dòng giỏ (mã + SL), SP đủ số lượng bỏ qua, lệch số lượng sửa đúng dòng, thiếu thì thêm mới; KHÔNG reload trang. TẮT (mặc định): mở giỏ MỚI sạch để lên đơn, giỏ cũ giữ nguyên.">
+              <input type="checkbox" id="kvSupplement">
+              <span class="kv-checkbox-title">🔁 Bổ sung giỏ đang mở</span>
+              <span class="kv-checkbox-hint" id="kvSupplementHint">(đang tắt — lên đơn vào giỏ mới)</span>
+            </label>
+            <label class="kv-label kv-checkbox-label" title="BẬT: Sau khi script điền đơn xong, AI sẽ kiểm tra giỏ hàng và tự sửa lỗi trước khi submit. TẮT: Bỏ qua kiểm tra — điền xong là xong (mặc định).">
+              <input type="checkbox" id="kvAiVerify">
+              <span class="kv-checkbox-title">🔍 AI Verify</span>
+              <span class="kv-checkbox-hint" id="kvModeHint">(đang tắt — script điền xong là xong)</span>
+            </label>
+            <label class="kv-label kv-checkbox-label" title="BẬT: Tự động bấm ĐẶT HÀNG sau khi điền đơn xong, rồi lưu đơn hàng thành file PDF (in từ trình duyệt). TẮT: Chỉ điền đơn, bạn tự bấm ĐẶT HÀNG.">
+              <input type="checkbox" id="kvSavePdf">
+              <span class="kv-checkbox-title">📄 Lưu PDF</span>
+              <span class="kv-checkbox-hint" id="kvPdfHint">(tự đặt hàng + in PDF)</span>
+            </label>
+            <label class="kv-label" for="kvAiProviderSelect">AI Provider:</label>
+            <select class="input-field select-field ai-provider-select" id="kvAiProviderSelect">
+              <option value="lmstudio">LM Studio (Local - Không cần API)</option>
+              <option value="gemini">Gemini Direct API</option>
+              <option value="openai">OpenAI API</option>
+            </select>
+          </div>
+        </div>
+        <div class="kv-setup-box" id="kvSetupHint">
+          💡 <strong>Hướng dẫn:</strong> Bấm <strong>"Kết nối Browser"</strong> — Chrome sẽ tự mở với trang KiotViet.<br>
+          🔑 Lần đầu tiên: đăng nhập KiotViet trong cửa sổ Chrome đó (chỉ 1 lần duy nhất, lần sau tự nhớ).
+        </div>
+      </div>
+
+      <!-- Order Preview Table -->
+      <div class="kv-section-title">Preview Đơn Hàng</div>
+      <div class="kv-preview-card">
+        <div class="kv-order-meta">
+          <span><strong>Khách hàng:</strong> <span id="kvPreviewCustomer">-</span></span>
+          <span><strong>Thanh toán:</strong> <span id="kvPreviewPayment">-</span></span>
+        </div>
+        <table class="order-table kv-preview-table">
+          <thead>
+            <tr>
+              <th>Mã KV</th>
+              <th>Sản phẩm</th>
+              <th>Số lượng</th>
+              <th>Đơn giá</th>
+            </tr>
+          </thead>
+          <tbody id="kvPreviewItems">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Real-time Agent Progress & Logs -->
+      <div class="kv-section-title flex-row-between">
+        <span>Nhật ký Agent (Real-time Log)</span>
+        <span id="kvStepIndicator" class="text-subtle">Bước 0/4</span>
+      </div>
+      <div class="kv-progress-bar-wrap">
+        <!-- Progressbar tiến trình KiotViet: width % được src/kiotviet/automation.js cập nhật theo từng bước lên đơn -->
+        <div class="kv-progress-bar-inner" id="kvProgressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Tiến trình lên đơn KiotViet"></div>
+      </div>
+      <div class="kv-log-console" id="kvLogConsole">
+        <div class="kv-log-entry info">[System] Sẵn sàng. Hãy bấm "Mở Chrome Debug" rồi "Kết nối Browser" và "Bắt đầu lên đơn".</div>
+      </div>
+    </div>
+
+    <div class="kv-modal-footer mt-md flex-row-end">
+      <button class="btn btn-primary btn-sm" id="btnKvStart" disabled>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Bắt đầu lên đơn
+      </button>
+      <button class="btn btn-outline-danger btn-sm hidden" id="btnKvAbort">Dừng (Abort)</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ES Module Entry Point (bundled by Vite) -->
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

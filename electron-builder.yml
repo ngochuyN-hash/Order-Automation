@@ -1,0 +1,83 @@
+# Electron Builder Configuration - Order Automation
+# Build: npm run build (produces installer in dist/)
+
+appId: com.orderautomation.app
+productName: Lên đơn hàng
+copyright: Copyright (c) 2026
+
+directories:
+  output: Ứng dụng Lên Đơn Hàng
+  buildResources: resources
+
+# Tên file cài đặt xuất ra (.exe)
+artifactName: Lên đơn hàng Setup ${version}.${ext}
+
+# Only include the app files needed at runtime.
+# Runtime dependencies include Playwright MCP and the Order Automation MCP SDK.
+# NOTE: root matching.worker.js is NOT a runtime file — the renderer
+# loads the Vite bundle from dist/ (index.html only loads /src/main.js).
+# It stays in the repo but is not packaged. Legacy app.js đã dọn khỏi root
+# (giờ nằm ở test/fixtures/app-legacy.js, chỉ test dùng).
+files:
+  - "main.js"
+  - "preload.js"
+  - "dist/**"
+  - "index.html"
+  - "style.css"
+  - "db.js"
+  - "db-store.js"
+  - "parser.js"
+  - "store.js"
+  - "ui-renderer.js"
+  - "ai-service.js"
+  - "browser-agent-ipc.js"
+  - "browser-agent.js"
+  - "mcp-client.js"
+  - "ai-providers.mjs"
+  - "script-registry.js"
+  - "kv-name-map.json"
+  - "default-db.json"   # dữ liệu danh mục + giá (db.js import; local-only ngoài git)
+  - "default-aliases.json"   # alias tên hàng hóa (local-only ngoài git)
+  - "default-memory.json"    # bộ nhớ mặc định AI (local-only ngoài git)
+  - "ai-classifier.json"     # rules phân loại AI (local-only ngoài git)
+  - "internal-codes.json"    # mã KV quà tặng MKT (local-only ngoài git)
+  - "local-config.json"      # domain tenant KiotViet (local-only ngoài git)
+  - "mcp-server.js"
+  - "mcp-stdio-proxy.js"
+  - "excel_automation.py"
+  - "excel_create_month.py"
+  - "package.json"
+
+# Package source into asar archive for protection
+asar: true
+# node_modules của @playwright/mcp + playwright phải nằm NGOÀI asar vì MCP
+# server chạy là child process riêng (ELECTRON_RUN_AS_NODE) — nó không đọc
+# được file bên trong asar. Xem browser-agent-ipc.js resolveMcpServerScript().
+asarUnpack:
+  - "**/*.py"
+  - "node_modules/@playwright/**"
+  - "node_modules/playwright/**"
+  - "node_modules/playwright-core/**"
+compression: maximum
+
+# Windows NSIS Installer
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  signingHashAlgorithms:
+    - sha256
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Lên đơn hàng
+
+# Note: The "I.ĐƠN HÀNG" and "Bảng giá" directories are NOT bundled.
+# They are business data folders that stay external.
+# In packaged mode, set ORDER_DIR env var to point to the orders directory.
+# Example: set ORDER_DIR=C:\Antigravity\Order Automation\I.ĐƠN HÀNG

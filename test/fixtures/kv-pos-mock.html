@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>KV POS Mock</title>
+<style>
+  body { font-family: sans-serif; margin: 0; display: flex; }
+  .left { width: 55%; padding: 12px; }
+  .right { width: 45%; padding: 12px; background: #f4f6f8; }
+  #productDropdown, #customerDropdown { border: 1px solid #ccc; max-height: 240px; overflow: auto; }
+  h5 { margin: 4px 0; padding: 6px; cursor: pointer; background: #fff; }
+  h5:hover { background: #eef; }
+  #cartTabs { display: flex; gap: 4px; margin-bottom: 8px; }
+  #cartTabs a { padding: 4px 10px; border: 1px solid #bbb; cursor: pointer; text-decoration: none; color: #333; }
+  #cartTabs a.active { background: #dce8ff; border-color: #06c; }
+  li.cart-item { list-style: none; margin: 6px 0; border-bottom: 1px solid #ddd; padding: 6px 0; }
+  .row-unit { color: #06c; }
+  #adjustPopover { position: fixed; right: 20px; top: 60px; background: #fff; border: 1px solid #888;
+                   padding: 10px; z-index: 500; }
+  .introjs-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999; }
+</style>
+</head>
+<body>
+<div class="left">
+  <input id="productSearchInput" placeholder="Tìm hàng hóa (F3)" autocomplete="off">
+  <div id="productDropdown"></div>
+</div>
+<div class="right">
+  <div id="cartTabs"></div>
+  <div id="customerBox"><input id="customerSearchInput" placeholder="Tìm khách hàng (F4)" autocomplete="off">
+    <div id="customerDropdown"></div></div>
+  <a id="cartCustomerLink" style="display:none"></a>
+  <ul id="cartList"></ul>
+  <div id="totals">Tổng tiền hàng <span id="totalQty">0</span> dòng</div>
+  <textarea placeholder="Ghi chú đơn hàng" id="orderNote"></textarea>
+</div>
+
+<script>
+// ==================== DỮ LIỆU MÔ PHỎNG (theo DOM đã verify trên KiotViet thật) ====================
+const PRODUCTS = [
+  { code: 'FB001AA',   name: 'TORVEX FAST 4T 10W40; 1L', unit: 'Bình',  price: 218000 },
+  { code: 'FB001AA-1', name: 'TORVEX FAST 4T 10W40; 1L', unit: 'Thùng', price: 2550017 },
+  { code: 'FB001AA-3', name: 'TORVEX FAST 4T 10W40; 1L', unit: 'Thùng - 3', price: 7600000 },
+  { code: 'FB002AA',   name: 'TORVEX FAST 4T 10W40; 800ml', unit: 'Bình',  price: 205017 },
+  { code: 'FB002AA-1', name: 'TORVEX FAST 4T 10W40; 800ml', unit: 'Thùng', price: 2370017 },
+  { code: 'VT5W30',    name: 'VELTRA PRIME EVO 5W30', unit: 'Thùng', price: 510017 },
+];
+const CUSTOMERS = [
+  { name: 'Công ty TNHH Hà Phúc', kvLabel: 'KH000999 - CÔNG TY TNHH HÀ PHÚC' },
+  { name: 'Trần Văn Hải',         kvLabel: 'KH000888 - TRẦN VĂN HẢI' },
+];
+
+// Nhiều giỏ dạng tab như KV thật: "Hóa đơn 1" / "Đặt hàng 1" / ... + nút "+" mở giỏ mới.
+// Mỗi giỏ có rows riêng; KV chèn SP mới vào ĐẦU giỏ active.
+let CARTS = [
+  { name: 'Hóa đơn 1', rows: [] },
+  { name: 'Đặt hàng 1', rows: [] },
+];
+let ACTIVE = 0;
+let SELECTED_CUSTOMER = null;
+
+function parseSeed() {
+  try {
+    const m = location.search.match(/seed=([^&]+)/);
+    return m ? JSON.parse(decodeURIComponent(m[1])) : {};
+  } catch (e) { return {}; }
+}
+
+// ==================== RENDER TAB GIỎ + NÚT "+" ====================
+function renderTabs() {
+  const box = document.getElementById('cartTabs');
+  box.innerHTML = '';
+  CARTS.forEach((c, i) => {
+    const a = document.createElement('a');
+    a.textContent = c.name;                       // text đúng dạng "Hóa đơn N"/"Đặt hàng N"
+    a.href = 'javascript:void(0)';
+    if (i === ACTIVE) a.className = 'active';
+    a.addEventListener('click', () => { ACTIVE = i; renderTabs(); renderCart(); });
+    box.appendChild(a);
+  });
+  const plus = document.createElement('a');
+  plus.textContent = '+';                          // nút mở giỏ mới — KV thật render dạng link "+"
+  plus.href = '';
+  plus.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    CARTS.push({ name: 'Hóa đơn ' + (CARTS.length + 1), rows: [] }); // giỏ cũ GIỮ NGUYÊN
+    ACTIVE = CARTS.length - 1;
+    renderTabs(); renderCart();
+  });
+  box.appendChild(plus);
+}
+
+// ==================== RENDER GIỎ — id đánh theo index như KiotViet thật ====================
+function renderCart() {
+  const ul = document.getElementById('cartList');
+  ul.innerHTML = '';
+  CARTS[ACTIVE].rows.forEach((row, i) => {
+    const li = document.createElement('li');
+    li.className = 'cart-item';
+    const info = document.createElement('div');
+    // textContent dòng gồm TÊN + MÃ + quy cách — đúng cấu trúc dòng giỏ KV thật
+    const nameSpan = document.createElement('span'); nameSpan.className = 'row-name'; nameSpan.textContent = row.name;
+    const codeSpan = document.createElement('span'); codeSpan.className = 'row-code'; codeSpan.textContent = row.code;
+    const unitSpan = document.createElement('span'); unitSpan.className = 'row-unit'; unitSpan.textContent = row.unitLabel;
+    info.appendChild(nameSpan); info.appendChild(document.createTextNode(' '));
+    info.appendChild(codeSpan); info.appendChild(document.createTextNode(' '));
+    info.appendChild(unitSpan);
+
+    const qty = document.createElement('input');
+    qty.id = 'note-cartitem-' + i;
+    qty.type = 'text'; qty.value = String(row.qty);
+    const applyQty = () => { const v = parseInt(qty.value) || 0; if (v > 0) row.qty = v; };
+    qty.addEventListener('change', applyQty);
+    qty.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { applyQty(); ev.preventDefault(); } });
+
+    const btn = document.createElement('button');
+    btn.className = 'cart-item-' + i;
+    btn.textContent = Number(row.price).toLocaleString();
+    btn.addEventListener('click', () => openPricePopover(i));
+
+    li.appendChild(info);
+    li.appendChild(qty);
+    li.appendChild(btn);
+    ul.appendChild(li);
+  });
+  document.getElementById('totalQty').textContent = String(CARTS[ACTIVE].rows.length);
+}
+
+function openPricePopover(idx) {
+  closePricePopover();
+  const pop = document.createElement('div');
+  pop.id = 'adjustPopover';
+  const lbl = document.createElement('label'); lbl.textContent = 'Giá bán';
+  const ipt = document.createElement('input'); ipt.id = 'adjustPriceIpt';
+  ipt.value = String(CARTS[ACTIVE].rows[idx].price);
+  const apply = () => { const v = parseInt(ipt.value); if (!isNaN(v)) CARTS[ACTIVE].rows[idx].price = v; closePricePopover(); renderCart(); };
+  ipt.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { apply(); ev.preventDefault(); } });
+  ipt.addEventListener('blur', () => setTimeout(closePricePopover, 150));
+  pop.appendChild(lbl); pop.appendChild(ipt);
+  document.body.appendChild(pop);
+  ipt.focus();
+}
+function closePricePopover() { const p = document.getElementById('adjustPopover'); if (p) p.remove(); }
+
+// ==================== TÌM SẢN PHẨM → DROPDOWN h5 (cấu trúc giống KV thật) ====================
+const pd = document.getElementById('productSearchInput');
+const pdd = document.getElementById('productDropdown');
+pd.addEventListener('input', () => {
+  const q = (pd.value || '').toLowerCase().trim();
+  if (!q) { pdd.innerHTML = ''; return; }
+  setTimeout(() => {
+    pdd.innerHTML = '';
+    PRODUCTS.filter(p => p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)).forEach(p => {
+      const h = document.createElement('h5');
+      h.textContent = p.name + ' ' + p.unit + ' — ' + p.price.toLocaleString();
+      h.addEventListener('click', () => {
+        CARTS[ACTIVE].rows.unshift({ code: p.code, name: p.name, unitLabel: p.unit, qty: 1, price: p.price });
+        renderCart();               // SP mới vào index 0, các dòng khác bị đẩy xuống (giống KV)
+        pdd.innerHTML = '';
+        pd.value = '';
+      });
+      pdd.appendChild(h);
+    });
+  }, 120);
+});
+
+// ==================== TÌM KHÁCH HÀNG ====================
+const cd = document.getElementById('customerSearchInput');
+const cdd = document.getElementById('customerDropdown');
+cd.addEventListener('input', () => {
+  const q = (cd.value || '').toLowerCase().trim();
+  if (!q) { cdd.innerHTML = ''; return; }
+  setTimeout(() => {
+    cdd.innerHTML = '';
+    const matched = CUSTOMERS.filter(c => c.name.toLowerCase().includes(q.slice(0, 8)) || q.length >= 3 && c.kvLabel.toLowerCase().includes(q));
+    (matched.length ? matched : CUSTOMERS).forEach(c => {
+      const h = document.createElement('h5');
+      h.textContent = c.kvLabel;
+      h.addEventListener('click', () => selectCustomer(c));
+      cdd.appendChild(h);
+    });
+  }, 120);
+});
+function selectCustomer(c) {
+  SELECTED_CUSTOMER = c;
+  const a = document.getElementById('cartCustomerLink');
+  a.textContent = c.kvLabel + ' — 0912345678';
+  a.style.display = '';
+  cdd.innerHTML = ''; cd.value = '';
+}
+
+// Khởi tạo giỏ từ seed (mô phỏng tab/giỏ user đã soạn dở trước khi bấm lên đơn)
+(function init() {
+  const seed = parseSeed();
+  (seed.preloadItems || []).forEach(r => {
+    const p = PRODUCTS.find(x => x.code === r.code);
+    if (p) CARTS[0].rows.push({ code: p.code, name: p.name, unitLabel: p.unit, qty: r.qty || 1,
+                                price: r.price !== undefined ? r.price : p.price });
+  });
+  if (seed.customer) {
+    const c = CUSTOMERS.find(x => x.name === seed.customer);
+    if (c) selectCustomer(c);
+  }
+  renderTabs();
+  renderCart();
+  if (seed.intro) {
+    // Overlay hướng dẫn intro.js — bấm vào là mất (giống hành vi Bỏ qua trên KV thật)
+    const ov = document.createElement('div');
+    ov.id = 'introjs-overlay';
+    ov.className = 'introjs-overlay';
+    ov.addEventListener('click', () => ov.remove());
+    document.body.appendChild(ov);
+  }
+})();
+
+// Dump trạng thái cho harness/test assert
+window.__kvDump = function () {
+  return {
+    customer: SELECTED_CUSTOMER ? SELECTED_CUSTOMER.name : null,
+    overlayGone: !document.getElementById('introjs-overlay'),
+    activeCart: CARTS[ACTIVE].name,
+    carts: CARTS.map(c => ({ name: c.name, rows: c.rows.map((r, i) => ({ index: i, code: r.code, qty: r.qty, price: r.price })) })),
+    rows: CARTS[ACTIVE].rows.map((r, i) => ({ index: i, code: r.code, qty: r.qty, price: r.price })),
+    note: document.getElementById('orderNote').value,
+  };
+};
+</script>
+</body>
+</html>
