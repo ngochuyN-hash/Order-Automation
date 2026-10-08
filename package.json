@@ -1,0 +1,38 @@
+{
+  "name": "order-automation",
+  "version": "1.5.4",
+  "description": "Lên đơn hàng - Tự động hóa đơn hàng (Electron Desktop App)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "mcp:stdio": "node mcp-stdio-proxy.js",
+    "mcp:http": "electron .",
+    "dev": "vite",
+    "dev:electron": "set NODE_ENV=development&& electron .",
+    "build:renderer": "vite build",
+    "test": "node --test test/parser.test.js test/app.test.js test/excel_automation.test.js test/excel_smoke.test.js test/note-sanitizer.test.mjs test/product-edit.test.mjs test/alias-audit.test.js test/matching-golden.test.mjs test/rescan.test.mjs test/json-extractor.test.mjs test/extraction-repair.test.mjs test/order-schema.test.mjs test/db-store.test.mjs test/pending-orders.test.mjs test/pending-direct-export.test.mjs test/order-title-sequence.test.mjs test/parse-queue.test.mjs test/tln-coverage.test.mjs test/browser-agent.test.js test/browser-agent-ipc.test.js test/mkt-gifts.test.mjs test/price-disambiguation.test.mjs test/correction-learning.test.mjs test/mcp-server.test.js test/price-seed-migration.test.mjs test/promo-text-rules.test.mjs test/promo-migration-fix.test.mjs test/product-create.test.mjs test/foc-extra-toggle.test.mjs test/campaign-editor.test.mjs test/kv-zero-qty.test.mjs test/kv-pending-direct.test.mjs test/product-modal-close.test.mjs test/order-tier-override.test.mjs test/offroad-qualifier.test.mjs",
+    "sync:default-db": "node scripts/sync-default-db.js",
+    "prebuild": "npm run build:renderer && node validate-build.js pre",
+    "build": "electron-builder --win",
+    "postbuild": "node validate-build.js post",
+    "build:dir": "electron-builder --win --dir",
+    "validate": "node validate-build.js",
+    "doctor": "node scripts/doctor.js",
+    "package:source": "node scripts/package-source.js"
+  },
+  "author": "Order Automation",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
+    "jsdom": "^30.1.0",
+    "vite": "^8.1.5",
+    "xlsx": "^0.18.5"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@playwright/mcp": "0.0.79",
+    "ws": "^8.21.1",
+    "zod": "^4.6.5"
+  }
+}
